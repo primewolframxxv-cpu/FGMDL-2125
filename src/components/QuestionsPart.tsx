@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckinAnswers } from '../types/index.ts';
 import { SunflowerSvg, TulipSvg, CarnationSvg } from './FloralBackground.tsx';
 import { playSuccessChime } from '../utils/audio.ts';
-import { Heart, BookOpen, Gift, ArrowRight, Copy, CheckCircle2, Sparkles, MessageCircleHeart } from 'lucide-react';
+import { Heart, BookOpen, Gift, ArrowRight, Copy, CheckCircle2, Sparkles, MessageCircleHeart, AlertCircle } from 'lucide-react';
 
 interface QuestionsPartProps {
   answers: CheckinAnswers;
@@ -19,6 +19,16 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
 }) => {
   const [formData, setFormData] = useState<CheckinAnswers>(answers);
   const [copied, setCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [unfilledFields, setUnfilledFields] = useState<{
+    moodNote: boolean;
+    academicsNote: boolean;
+    christmasNote: boolean;
+  }>({
+    moodNote: false,
+    academicsNote: false,
+    christmasNote: false,
+  });
 
   const handleScoreChange = (field: keyof CheckinAnswers, score: number) => {
     const updated = { ...formData, [field]: score };
@@ -30,9 +40,41 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
     const updated = { ...formData, [field]: text };
     setFormData(updated);
     onUpdateAnswers(updated);
+    if (errorMessage) {
+      setErrorMessage('');
+    }
+    if (unfilledFields[field as keyof typeof unfilledFields]) {
+      setUnfilledFields((prev) => ({ ...prev, [field]: false }));
+    }
   };
 
   const handleFinish = async () => {
+    const isMoodEmpty = !formData.moodNote || formData.moodNote.trim() === '';
+    const isAcademicsEmpty = !formData.academicsNote || formData.academicsNote.trim() === '';
+    const isChristmasEmpty = !formData.christmasNote || formData.christmasNote.trim() === '';
+
+    if (isMoodEmpty || isAcademicsEmpty || isChristmasEmpty) {
+      setUnfilledFields({
+        moodNote: isMoodEmpty,
+        academicsNote: isAcademicsEmpty,
+        christmasNote: isChristmasEmpty,
+      });
+      setErrorMessage("Please try again, I'd be more than happy to know how've you been these days");
+
+      // Auto-scroll to first unfilled comment field
+      const targetId = isMoodEmpty
+        ? 'comment-mood'
+        : isAcademicsEmpty
+        ? 'comment-academics'
+        : 'comment-christmas';
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      }
+      return;
+    }
+
     onUpdateAnswers(formData);
 
     // Save to server backend
@@ -156,11 +198,16 @@ Sent with warmth 💛`;
               <span>Add a comment / chika about how life has been treating you lately:</span>
             </label>
             <textarea
+              id="comment-mood"
               rows={2}
               value={formData.moodNote}
               onChange={(e) => handleTextChange('moodNote', e.target.value)}
               placeholder="Chika time: tell me how things have been..."
-              className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-amber-200/80 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/40 focus:border-rose-400 transition-all shadow-inner"
+              className={`w-full px-4 py-3 rounded-2xl bg-white border-2 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 transition-all shadow-inner ${
+                unfilledFields.moodNote
+                  ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50/30'
+                  : 'border-amber-200/80 focus:ring-rose-400/40 focus:border-rose-400'
+              }`}
             />
           </div>
         </div>
@@ -211,11 +258,16 @@ Sent with warmth 💛`;
               <span>Add a comment / chika about your studies, exams, or clinicals:</span>
             </label>
             <textarea
+              id="comment-academics"
               rows={2}
               value={formData.academicsNote}
               onChange={(e) => handleTextChange('academicsNote', e.target.value)}
               placeholder="How are classes and study sessions going?..."
-              className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-amber-200/80 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all shadow-inner"
+              className={`w-full px-4 py-3 rounded-2xl bg-white border-2 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 transition-all shadow-inner ${
+                unfilledFields.academicsNote
+                  ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50/30'
+                  : 'border-amber-200/80 focus:ring-amber-500/40 focus:border-amber-500'
+              }`}
             />
           </div>
         </div>
@@ -266,15 +318,28 @@ Sent with warmth 💛`;
               <span>Add a comment / chika about your Christmas mood or holiday plans:</span>
             </label>
             <textarea
+              id="comment-christmas"
               rows={2}
               value={formData.christmasNote}
               onChange={(e) => handleTextChange('christmasNote', e.target.value)}
               placeholder="Any holiday break thoughts or wishes?..."
-              className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-amber-200/80 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all shadow-inner"
+              className={`w-full px-4 py-3 rounded-2xl bg-white border-2 text-amber-950 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 transition-all shadow-inner ${
+                unfilledFields.christmasNote
+                  ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50/30'
+                  : 'border-amber-200/80 focus:ring-emerald-500/40 focus:border-emerald-500'
+              }`}
             />
           </div>
         </div>
       </div>
+
+      {/* Validation Error Message */}
+      {errorMessage && (
+        <div className="mt-6 p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 font-bold text-sm sm:text-base text-center animate-shake shadow-xs flex items-center justify-center gap-2">
+          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {/* Action Footer */}
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-amber-100/70 p-4 sm:p-5 rounded-3xl border border-amber-200/80">

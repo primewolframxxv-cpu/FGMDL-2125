@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FortuneCookie, CookieMotif, SongDetails } from '../types/index.ts';
 import { playCookieCrunch } from '../utils/audio.ts';
 import confetti from 'canvas-confetti';
-import { ExternalLink, ArrowRight, Edit3 } from 'lucide-react';
+import { ExternalLink, ArrowRight } from 'lucide-react';
 import { SunflowerSvg, CarnationSvg, TulipSvg } from './FloralBackground.tsx';
 
 // Motif SVGs
@@ -160,16 +160,13 @@ const RealisticCookieGraphic = ({ motif }: { motif: CookieMotif }) => (
 
 interface FortuneCookiesPartProps {
   cookies: FortuneCookie[];
-  onUpdateCookies: (newCookies: FortuneCookie[]) => void;
   songDetails: SongDetails;
-  onUpdateSongDetails: (newSong: SongDetails) => void;
   onProceedToPuzzle: () => void;
   isAudioMuted: boolean;
 }
 
 export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
   cookies,
-  onUpdateCookies,
   songDetails,
   onProceedToPuzzle,
   isAudioMuted,
@@ -184,7 +181,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
   // 11th cookie states
   const [isEleventhFocused, setIsEleventhFocused] = useState(false);
   const [isEleventhCracked, setIsEleventhCracked] = useState(false);
-  const [editingCookie, setEditingCookie] = useState<FortuneCookie | null>(null);
 
   useEffect(() => {
     localStorage.setItem('pumpkin_cracked_cookies', JSON.stringify(Array.from(crackedIds)));
@@ -221,13 +217,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
     } catch {}
   };
 
-  const handleSaveQuote = (quote: string, source: string) => {
-    if (!editingCookie) return;
-    const updated = cookies.map((c) => (c.id === editingCookie.id ? { ...c, quote, source } : c));
-    onUpdateCookies(updated);
-    setEditingCookie(null);
-  };
-
   return (
     <div className="relative z-10 max-w-5xl mx-auto px-4 py-8 sm:py-12 font-times animate-slide-in">
       {/* Header */}
@@ -247,7 +236,7 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
         </p>
       </div>
 
-      {/* Grid of 10 Fortune Cookies */}
+      {/* Grid of 10 Fortune Cookies (NON-CUSTOMIZABLE, ZERO EDIT BUTTONS) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
         {cookies.map((cookie, idx) => {
           const isCracked = crackedIds.has(cookie.id);
@@ -263,23 +252,11 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
               }`}
               onClick={() => !isCracked && handleCrackCookie(cookie)}
             >
-              {/* Clean # number at top */}
+              {/* Clean # number at top without edit icons */}
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-amber-900 font-sans">
                   #{idx + 1}
                 </span>
-                {isCracked && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingCookie(cookie);
-                    }}
-                    className="text-stone-400 hover:text-amber-800 p-0.5 rounded cursor-pointer"
-                    title="Edit quote"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
-                )}
               </div>
 
               {/* Cookie Graphic or Cracked Fortune Paper */}
@@ -317,13 +294,12 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* 11th FORTUNE COOKIE - JUST THE COOKIE ITSELF BRO (GLOWING & WIGGLING) */}
+      {/* 11th FORTUNE COOKIE - JUST THE COOKIE ITSELF (GLOWING & WIGGLING) */}
       {/* ============================================================ */}
       {allTenCracked && (
         <div className="mt-12 flex flex-col items-center animate-bloom">
           {!isEleventhFocused ? (
             <div className="flex flex-col items-center">
-              {/* Just the wiggling, glowing cookie itself */}
               <div
                 onClick={() => setIsEleventhFocused(true)}
                 className="relative cursor-pointer group flex flex-col items-center p-4 animate-cookie-lure"
@@ -335,7 +311,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
               </div>
             </div>
           ) : (
-            /* Once tapped: centered in modal for crack */
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
               <div className="relative w-full max-w-lg bg-[#FFFDF7] rounded-3xl p-6 sm:p-10 border-2 border-amber-300 shadow-2xl text-center">
                 {!isEleventhCracked ? (
@@ -355,7 +330,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                     </button>
                   </div>
                 ) : (
-                  /* Revealed Song Card - NO TUNE, JUST THE REROUTE BUTTON TO PLAYLIST */
                   <div className="text-left animate-paper-in py-2">
                     <div className="pb-2 mb-3 border-b border-amber-200">
                       <p className="text-xs font-bold text-amber-800 uppercase tracking-widest font-sans">
@@ -369,12 +343,10 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                       </p>
                     </div>
 
-                    {/* Exact comment requested by user */}
                     <div className="bg-amber-50/90 p-4 rounded-2xl border border-amber-200 text-stone-800 text-sm sm:text-base leading-relaxed mb-6 italic">
-                      &ldquo;I listened to this song on the radio randomly during an afternoon drive, and had a thought of you. It is a meaningful song I would want to recommend to you :)&rdquo;
+                      &ldquo;{songDetails.note}&rdquo;
                     </div>
 
-                    {/* Listen to it on our playlist button */}
                     <a
                       href={songDetails.streamingUrl}
                       target="_blank"
@@ -385,7 +357,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                       <ExternalLink className="w-4 h-4" />
                     </a>
 
-                    {/* Continue Button */}
                     <div className="pt-3 border-t border-amber-200/70 flex justify-end">
                       <button
                         onClick={() => {
@@ -403,53 +374,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Edit quote modal */}
-      {editingCookie && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-amber-200 shadow-xl font-sans">
-            <h4 className="text-lg font-bold text-amber-950 mb-3">Edit Fortune</h4>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-stone-600 mb-1">Quote:</label>
-                <textarea
-                  rows={3}
-                  defaultValue={editingCookie.quote}
-                  id="editQuoteText"
-                  className="w-full p-3 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-stone-600 mb-1">Credit / Source:</label>
-                <input
-                  type="text"
-                  defaultValue={editingCookie.source || ''}
-                  id="editQuoteSource"
-                  className="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setEditingCookie(null)}
-                className="px-3.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const quoteVal = (document.getElementById('editQuoteText') as HTMLTextAreaElement).value;
-                  const sourceVal = (document.getElementById('editQuoteSource') as HTMLInputElement).value;
-                  handleSaveQuote(quoteVal, sourceVal);
-                }}
-                className="px-4 py-1.5 text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 rounded-xl"
-              >
-                Save
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

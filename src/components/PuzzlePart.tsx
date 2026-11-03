@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { playSnapChime, playSuccessChime } from '../utils/audio.ts';
 import { SunflowerSvg, TulipSvg } from './FloralBackground.tsx';
+import clefableGengarImg from '../assets/images/clefable_gengar.jpg';
 import {
-  Upload,
-  Eye,
   CheckCircle2,
   RefreshCw,
   Trophy,
   Heart,
-  Edit3,
   Copy,
-  Lightbulb,
 } from 'lucide-react';
-
-const USER_PUZZLE_IMAGE = '/assets/aistudio/181810a26dbad5640eea75fb4a4d070d_19b2c065.jpg';
 
 interface Piece {
   id: number;
@@ -24,18 +19,14 @@ interface Piece {
 
 interface PuzzlePartProps {
   customMessage: string;
-  onUpdateMessage: (msg: string) => void;
   isAudioMuted: boolean;
 }
 
 export const PuzzlePart: React.FC<PuzzlePartProps> = ({
   customMessage,
-  onUpdateMessage,
   isAudioMuted,
 }) => {
-  const [imageSrc, setImageSrc] = useState<string>(() => {
-    return localStorage.getItem('pumpkin_puzzle_image') || USER_PUZZLE_IMAGE;
-  });
+  const imageSrc = clefableGengarImg;
 
   const [gridSize, setGridSize] = useState<3 | 4>(3);
   const totalPieces = gridSize * gridSize;
@@ -43,14 +34,21 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isSolved, setIsSolved] = useState<boolean>(false);
-  const [showNumbers, setShowNumbers] = useState<boolean>(false);
-  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
-  const [isEditingMessage, setIsEditingMessage] = useState<boolean>(false);
   const [copiedLetter, setCopiedLetter] = useState<boolean>(false);
   const [movesCount, setMovesCount] = useState<number>(0);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputId = useId();
+  // Clue state with 1-minute countdown
+  const [clueCooldown, setClueCooldown] = useState<number>(0);
+  const [activeClue, setActiveClue] = useState<{ currentSlot: number; targetSlot: number } | null>(null);
+
+  // Countdown timer for 1-minute clue cooldown
+  useEffect(() => {
+    if (clueCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setClueCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [clueCooldown]);
 
   const shufflePieces = (size: number) => {
     const count = size * size;
@@ -76,16 +74,18 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
     setIsSolved(false);
     setSelectedIndex(null);
     setMovesCount(0);
+    setActiveClue(null);
   };
 
   useEffect(() => {
     shufflePieces(gridSize);
-  }, [gridSize, imageSrc]);
+  }, [gridSize]);
 
   const checkVictory = (currentPieces: Piece[]) => {
     const solved = currentPieces.every((p) => p.currentIndex === p.correctIndex);
     if (solved) {
       setIsSolved(true);
+      setActiveClue(null);
       if (!isAudioMuted) {
         playSuccessChime();
       }
@@ -124,6 +124,11 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
         setMovesCount((prev) => prev + 1);
         if (!isAudioMuted) playSnapChime();
         checkVictory(nextPieces);
+
+        // Clear active clue if user moved the clue tile
+        if (activeClue && (activeClue.currentSlot === selectedIndex || activeClue.currentSlot === clickedCurrentIndex)) {
+          setActiveClue(null);
+        }
       }
     }
   };
@@ -156,30 +161,36 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
       setMovesCount((prev) => prev + 1);
       if (!isAudioMuted) playSnapChime();
       checkVictory(nextPieces);
+
+      if (activeClue && (activeClue.currentSlot === fromIndex || activeClue.currentSlot === toIndex)) {
+        setActiveClue(null);
+      }
     }
   };
 
-  const handleAutoSolve = () => {
-    const solvedPieces = pieces.map((p) => ({
-      ...p,
-      currentIndex: p.correctIndex,
-    }));
-    setPieces(solvedPieces);
-    checkVictory(solvedPieces);
-  };
+  // Clue mechanism: highlights one misplaced tile and where it belongs, with a 1-minute countdown cooldown
+  const handleUseClue = () => {
+    if (clueCooldown > 0 || isSolved) return;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const misplaced = pieces.filter((p) => p.currentIndex !== p.correctIndex);
+    if (misplaced.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setImageSrc(reader.result);
-        localStorage.setItem('pumpkin_puzzle_image', reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    // Pick one misplaced tile
+    const chosen = misplaced[Math.floor(Math.random() * misplaced.length)];
+    setActiveClue({
+      currentSlot: chosen.currentIndex,
+      targetSlot: chosen.correctIndex,
+    });
+    setClueCooldown(60); // 1-minute cooldown
+
+    if (!isAudioMuted) {
+      playSnapChime();
+    }
+
+    // Auto clear visual hint after 8 seconds so screen remains clean
+    setTimeout(() => {
+      setActiveClue((prev) => (prev && prev.currentSlot === chosen.currentIndex ? null : prev));
+    }, 8000);
   };
 
   const handleCopyLetter = () => {
@@ -237,49 +248,35 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Clue button with 1-min countdown cooldown */}
             <button
-              onClick={() => setShowPreviewModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white hover:bg-amber-50 text-amber-900 rounded-xl border border-amber-200 cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5 text-amber-700" />
-              <span>Preview</span>
-            </button>
-
-            <button
-              onClick={() => setShowNumbers((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                showNumbers
-                  ? 'bg-amber-200 text-amber-950 border-amber-300'
-                  : 'bg-white hover:bg-amber-50 text-amber-900 border-amber-200'
+              onClick={handleUseClue}
+              disabled={clueCooldown > 0 || isSolved}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all ${
+                clueCooldown > 0
+                  ? 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                  : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 cursor-pointer shadow-xs active:scale-95'
               }`}
+              title={clueCooldown > 0 ? `Clue available in ${clueCooldown}s` : 'Reveal a tile clue (1 min cooldown)'}
             >
-              <Lightbulb className="w-3.5 h-3.5 text-amber-700" />
-              <span>{showNumbers ? 'Numbers On' : 'Hint Numbers'}</span>
+              {clueCooldown > 0 ? (
+                <span className="w-2 h-2 rounded-full bg-stone-300" />
+              ) : (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600"></span>
+                </span>
+              )}
+              <span>{clueCooldown > 0 ? `Clue (${clueCooldown}s)` : 'Clue'}</span>
             </button>
 
             <button
               onClick={() => shufflePieces(gridSize)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white hover:bg-amber-50 text-amber-900 rounded-xl border border-amber-200 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white hover:bg-amber-50 text-amber-900 rounded-xl border border-amber-200 cursor-pointer active:scale-95"
             >
               <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
               <span>Reshuffle</span>
             </button>
-
-            <label
-              htmlFor={fileInputId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl border border-rose-200 cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5 text-rose-600" />
-              <span>Upload Photo</span>
-            </label>
-            <input
-              id={fileInputId}
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
           </div>
         </div>
 
@@ -321,6 +318,10 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
                   const isSelected = selectedIndex === currentSlot;
                   const isCorrectlyPlaced = piece.correctIndex === piece.currentIndex;
 
+                  // Clue highlights
+                  const isClueSource = activeClue?.currentSlot === currentSlot;
+                  const isClueTarget = activeClue?.targetSlot === currentSlot;
+
                   const row = Math.floor(piece.correctIndex / gridSize);
                   const col = piece.correctIndex % gridSize;
                   const xPercent = (col / (gridSize - 1)) * 100;
@@ -337,6 +338,10 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
                       className={`relative cursor-pointer select-none rounded-xl overflow-hidden transition-all duration-150 ${
                         isSelected
                           ? 'ring-4 ring-rose-500 scale-95 z-20 shadow-xl'
+                          : isClueSource
+                          ? 'ring-4 ring-amber-500 scale-105 z-30 shadow-2xl animate-bounce'
+                          : isClueTarget
+                          ? 'ring-4 ring-emerald-500 z-20 shadow-xl'
                           : 'hover:opacity-95'
                       } ${isCorrectlyPlaced ? 'border-2 border-emerald-400/80' : 'border border-amber-200'}`}
                       style={{
@@ -345,11 +350,18 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
                         backgroundPosition: `${xPercent}% ${yPercent}%`,
                       }}
                     >
-                      {showNumbers && (
-                        <div className="absolute top-1 left-1 bg-black/65 text-white font-mono text-[10px] px-1.5 py-0.5 rounded-md font-bold">
-                          {piece.correctIndex + 1}
+                      {/* Clue indicator labels */}
+                      {isClueSource && (
+                        <div className="absolute top-1 left-1 bg-amber-600 text-white font-sans text-[10px] px-2 py-0.5 rounded-md font-bold shadow-md tracking-wide uppercase">
+                          Move
                         </div>
                       )}
+                      {isClueTarget && (
+                        <div className="absolute bottom-1 left-1 bg-emerald-600 text-white font-sans text-[10px] px-2 py-0.5 rounded-md font-bold shadow-md tracking-wide uppercase">
+                          Place Here
+                        </div>
+                      )}
+
                       {isCorrectlyPlaced && (
                         <div className="absolute bottom-1 right-1 bg-emerald-600/90 text-white p-0.5 rounded-full pointer-events-none">
                           <CheckCircle2 className="w-2.5 h-2.5" />
@@ -362,22 +374,15 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
             )}
           </div>
 
-          <div className="mt-4 flex items-center justify-between w-full max-w-[360px] sm:max-w-[460px] text-xs text-stone-500 px-2">
+          {/* Moves counter */}
+          <div className="mt-4 flex items-center justify-center w-full max-w-[360px] sm:max-w-[460px] text-xs text-stone-500 px-2">
             <span>
               Moves: <strong className="font-mono text-amber-900">{movesCount}</strong>
             </span>
-            {!isSolved && (
-              <button
-                onClick={handleAutoSolve}
-                className="text-amber-800 hover:text-amber-950 underline font-bold cursor-pointer"
-              >
-                Auto-complete
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Revealed Message from Fred - BOLDER AND MORE REFINED */}
+        {/* Revealed Message from Fred - BOLDER AND REFINED */}
         {isSolved && (
           <div className="mt-8 pt-6 border-t border-amber-200/80 animate-paper-in">
             <div className="bg-gradient-to-br from-[#FFFDF8] via-white to-amber-50/70 rounded-3xl p-6 sm:p-10 border-2 border-amber-300 shadow-xl">
@@ -389,82 +394,29 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
                   </h3>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsEditingMessage((prev) => !prev)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-white hover:bg-amber-50 text-stone-700 rounded-xl border border-amber-200 shadow-xs cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-amber-700" />
-                    <span>{isEditingMessage ? 'Done' : 'Edit'}</span>
-                  </button>
-
-                  <button
-                    onClick={handleCopyLetter}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-white hover:bg-amber-50 text-stone-700 rounded-xl border border-amber-200 shadow-xs cursor-pointer"
-                  >
-                    {copiedLetter ? (
-                      <span className="text-emerald-700 font-extrabold">Copied!</span>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-stone-600" />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCopyLetter}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white hover:bg-amber-50 text-stone-700 rounded-xl border border-amber-200 shadow-xs cursor-pointer"
+                >
+                  {copiedLetter ? (
+                    <span className="text-emerald-700 font-extrabold">Copied!</span>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-stone-600" />
+                      <span>Copy Letter</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              {isEditingMessage ? (
-                <div className="space-y-3">
-                  <textarea
-                    rows={7}
-                    value={customMessage}
-                    onChange={(e) => onUpdateMessage(e.target.value)}
-                    className="w-full p-4 rounded-2xl border-2 border-amber-300 bg-white text-stone-800 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => setIsEditingMessage(false)}
-                      className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold rounded-xl"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Bolder, refined, heartwarming typography */
-                <div className="text-amber-950 font-semibold text-lg sm:text-xl leading-relaxed whitespace-pre-line space-y-4">
-                  <p>{customMessage}</p>
-                </div>
-              )}
+              {/* Bolder, refined, heartwarming typography */}
+              <div className="text-amber-950 font-semibold text-lg sm:text-xl leading-relaxed whitespace-pre-line space-y-4">
+                <p>{customMessage}</p>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {showPreviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border-2 border-amber-200 shadow-2xl text-center">
-            <h4 className="text-lg font-bold text-amber-950 mb-3">
-              Picture Reference
-            </h4>
-            <div className="w-full aspect-square rounded-2xl overflow-hidden mb-4 border border-amber-200 shadow-inner">
-              <img
-                src={imageSrc}
-                alt="Puzzle Reference"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <button
-              onClick={() => setShowPreviewModal(false)}
-              className="py-2.5 px-6 bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold rounded-xl"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

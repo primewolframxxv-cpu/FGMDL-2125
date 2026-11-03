@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StepId, CheckinAnswers, FortuneCookie, SongDetails } from './types/index.ts';
+import { StepId, CheckinAnswers } from './types/index.ts';
 import {
   INITIAL_FORTUNE_COOKIES,
   INITIAL_SONG_DETAILS,
@@ -43,21 +43,6 @@ export default function App() {
         };
   });
 
-  const [cookies, setCookies] = useState<FortuneCookie[]>(() => {
-    const saved = localStorage.getItem('pumpkin_cookies_list_v2');
-    return saved ? JSON.parse(saved) : INITIAL_FORTUNE_COOKIES;
-  });
-
-  const [songDetails, setSongDetails] = useState<SongDetails>(() => {
-    const saved = localStorage.getItem('pumpkin_song_details_v2');
-    return saved ? JSON.parse(saved) : INITIAL_SONG_DETAILS;
-  });
-
-  const [fredMessage, setFredMessage] = useState<string>(() => {
-    const saved = localStorage.getItem('pumpkin_fred_message_v2');
-    return saved || INITIAL_FRED_LETTER;
-  });
-
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
 
   useEffect(() => {
@@ -74,18 +59,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('pumpkin_checkin_answers', JSON.stringify(checkinAnswers));
   }, [checkinAnswers]);
-
-  useEffect(() => {
-    localStorage.setItem('pumpkin_cookies_list_v2', JSON.stringify(cookies));
-  }, [cookies]);
-
-  useEffect(() => {
-    localStorage.setItem('pumpkin_song_details_v2', JSON.stringify(songDetails));
-  }, [songDetails]);
-
-  useEffect(() => {
-    localStorage.setItem('pumpkin_fred_message_v2', fredMessage);
-  }, [fredMessage]);
 
   const unlockNextStep = (nextStep: StepId) => {
     setUnlockedSteps((prev) => new Set([...prev, nextStep]));
@@ -134,10 +107,8 @@ export default function App() {
 
         {currentStep === 'COOKIES' && (
           <FortuneCookiesPart
-            cookies={cookies}
-            onUpdateCookies={setCookies}
-            songDetails={songDetails}
-            onUpdateSongDetails={setSongDetails}
+            cookies={INITIAL_FORTUNE_COOKIES}
+            songDetails={INITIAL_SONG_DETAILS}
             onProceedToPuzzle={() => unlockNextStep('PUZZLE')}
             isAudioMuted={isAudioMuted}
           />
@@ -145,8 +116,7 @@ export default function App() {
 
         {currentStep === 'PUZZLE' && (
           <PuzzlePart
-            customMessage={fredMessage}
-            onUpdateMessage={setFredMessage}
+            customMessage={INITIAL_FRED_LETTER}
             isAudioMuted={isAudioMuted}
           />
         )}

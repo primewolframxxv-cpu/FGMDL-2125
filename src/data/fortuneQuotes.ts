@@ -13,8 +13,8 @@ export const INITIAL_FORTUNE_COOKIES: FortuneCookie[] = [
     id: 'cookie-chicken',
     motif: 'chicken',
     label: '',
-    quote: 'Every atom of your flesh is as dear to me as my own: in pain and sickness it would still be dear. You are my sympathy, my better self.',
-    source: 'Charlotte Brontë, Jane Eyre',
+    quote: 'It was like walking into the Sun, being with you. It was like walking into the Sun for the first time after a terribly long winter.',
+    source: "You are the warmest place I've ever lived",
     category: 'caring',
   },
   {
@@ -94,11 +94,11 @@ export const INITIAL_SONG_DETAILS: SongDetails = {
 
 export const INITIAL_FRED_LETTER = `Dear Pumpkin,
 
-I wanted to make sure you know that you are never forgotten. Life gets hectic, semesters get intense, and distance can make the days feel quiet—but you always have a special place in my prayers and thoughts.
+I wanted to make sure you know that you would always matter to me. Life may give us challenges, semesters may be stressful, and distance can make the days feel quiet—but you always have a special place in my prayers and thoughts.
 
-I hope school and life treat you kindly, and that you take things one day at a time without being too hard on yourself. When things get overwhelming, remember how strong, smart, and kind you are.
+I hope school and life treat you kindly, and that you take things one day at a time without being too hard on yourself. When you get overwhelmed by things, remember how strong, smart, and kind you are.
 
-Wishing you peaceful days, restful nights, and a very warm and joyful Christmas ahead.
+Wishing you peaceful days, restful nights, and a very warm and joyful Christmas season ahead.
 
 I'm always cheering for you from afar.
 
