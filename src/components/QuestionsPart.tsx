@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckinAnswers } from '../types/index.ts';
 import { SunflowerSvg, TulipSvg, CarnationSvg } from './FloralBackground.tsx';
 import { playSuccessChime } from '../utils/audio.ts';
+import { saveResponse } from '../utils/responsesStorage.ts';
 import { Heart, BookOpen, Gift, ArrowRight, Copy, CheckCircle2, Sparkles, MessageCircleHeart, AlertCircle } from 'lucide-react';
 
 interface QuestionsPartProps {
@@ -77,18 +78,17 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
 
     onUpdateAnswers(formData);
 
-    // Save to server backend
+    const submissionEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      ...formData,
+    };
+
+    // Save across all layers (Cloud Vault + Server API + LocalStorage)
     try {
-      await fetch('/api/responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          submittedAt: new Date().toISOString(),
-        }),
-      });
-    } catch {
-      // Local storage fallback already handled
+      await saveResponse(submissionEntry);
+    } catch (err) {
+      console.warn('Submission save error:', err);
     }
 
     if (!isAudioMuted) {

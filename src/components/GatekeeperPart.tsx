@@ -1,21 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { SunflowerSvg, TulipSvg, CarnationSvg } from './FloralBackground.tsx';
 import { playSuccessChime } from '../utils/audio.ts';
+import { getAllResponses, deleteResponseById, clearAllResponses, StoredResponse } from '../utils/responsesStorage.ts';
 import { ArrowRight, Lock, Sparkles, KeyRound, RefreshCw, Trash2, Heart, Calendar, BookOpen, Gift, Smile } from 'lucide-react';
-
-interface StoredResponse {
-  id?: string;
-  createdAt?: string;
-  mood: number;
-  moodNote: string;
-  academics: number;
-  academicsNote: string;
-  christmas: number;
-  christmasNote: string;
-  cookiesCracked?: number;
-  puzzleSolved?: boolean;
-}
 
 interface GatekeeperPartProps {
   onUnlock: () => void;
@@ -28,6 +16,15 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
   const [isShaking, setIsShaking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if Fred explicitly opened on dev or with ?fred parameter
+  const isFredSite =
+    typeof window !== 'undefined' &&
+    (window.location.hostname.includes('ais-dev') ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.search.includes('fred') ||
+      window.location.hash.includes('fred'));
+
   // Fred's Secret Dashboard states
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState('');
@@ -35,42 +32,32 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
   const [isFredDashboardOpen, setIsFredDashboardOpen] = useState(false);
   const [responsesList, setResponsesList] = useState<StoredResponse[]>([]);
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
+  const [isFlowerWobbling, setIsFlowerWobbling] = useState(false);
 
+  const sunflowerClicksRef = useRef(0);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Secret shortcut: Ctrl+Shift+F or Alt+F anywhere on gatekeeper
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') || (e.altKey && e.key.toLowerCase() === 'f')) {
+        e.preventDefault();
+        setShowPasscodeModal(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const fetchResponses = async () => {
     setIsLoadingResponses(true);
-    let combined: StoredResponse[] = [];
-
     try {
-      const res = await fetch('/api/responses');
-      if (res.ok) {
-        const serverData = await res.json();
-        if (Array.isArray(serverData)) {
-          combined = serverData;
-        }
-      }
-    } catch {}
-
-    try {
-      const localAnswersStr = localStorage.getItem('pumpkin_checkin_answers');
-      if (localAnswersStr) {
-        const local = JSON.parse(localAnswersStr);
-        if (local && (local.moodNote || local.academicsNote || local.christmasNote || combined.length === 0)) {
-          const isDuplicate = combined.some(
-            (c) => c.mood === local.mood && c.moodNote === local.moodNote && c.academics === local.academics
-          );
-          if (!isDuplicate) {
-            combined.push({
-              id: 'local-session',
-              createdAt: new Date().toISOString(),
-              ...local,
-            });
-          }
-        }
-      }
-    } catch {}
-
-    setResponsesList(combined);
-    setIsLoadingResponses(false);
+      const data = await getAllResponses();
+      setResponsesList(data);
+    } catch (e) {
+      console.warn('Failed to fetch responses:', e);
+    } finally {
+      setIsLoadingResponses(false);
+    }
   };
 
   const handlePasscodeSubmit = (e: React.FormEvent) => {
@@ -87,14 +74,54 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
     }
   };
 
+  const handleDeleteSingleResponse = async (id?: string) => {
+    if (!id) return;
+    if (!window.confirm('Delete this response?')) return;
+
+    try {
+      await deleteResponseById(id);
+      setResponsesList((prev) => prev.filter((item) => item.id !== id));
+    } catch (e) {
+      console.warn('Failed to delete response:', e);
+    }
+  };
+
   const handleClearResponses = async () => {
     if (window.confirm('Clear all recorded responses? This will reset the responses list.')) {
       try {
-        await fetch('/api/responses', { method: 'DELETE' });
-      } catch {}
-      localStorage.removeItem('pumpkin_checkin_answers');
-      setResponsesList([]);
+        await clearAllResponses();
+        setResponsesList([]);
+      } catch (e) {
+        console.warn('Failed to clear responses:', e);
+      }
     }
+  };
+
+  const handleSunflowerClick = () => {
+    // Innocent visual feedback so Pumpkin just sees flower nod
+    setIsFlowerWobbling(true);
+    setTimeout(() => setIsFlowerWobbling(false), 500);
+
+    // If on dev host or ?fred in URL, single click opens
+    if (isFredSite) {
+      setShowPasscodeModal(true);
+      return;
+    }
+
+    // On any external browser / incognito: single click does NOTHING suspicious (no popup for Pumpkin)
+    // Fred can tap 3 times quickly within 1.5s to trigger the passcode modal
+    sunflowerClicksRef.current += 1;
+    if (sunflowerClicksRef.current >= 3) {
+      sunflowerClicksRef.current = 0;
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      setShowPasscodeModal(true);
+      return;
+    }
+
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(() => {
+      sunflowerClicksRef.current = 0;
+    }, 1500);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -103,6 +130,20 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
 
     if (!clean) {
       setErrorMessage('Please enter the name to continue.');
+      return;
+    }
+
+    // Secret entry for Fred on ANY device / browser / incognito
+    if (clean === 'fred' || clean === 'fred123' || clean === 'admin') {
+      if (clean === 'fred123') {
+        setIsFredDashboardOpen(true);
+        fetchResponses();
+        if (!isAudioMuted) playSuccessChime();
+      } else {
+        setShowPasscodeModal(true);
+      }
+      setInputName('');
+      setErrorMessage('');
       return;
     }
 
@@ -134,16 +175,19 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
 
   return (
     <div className="relative z-10 max-w-xl mx-auto px-4 py-8 sm:py-14 flex flex-col items-center text-center animate-slide-in">
-      {/* Decorative Floral Trio - Sunflower has innocent appearance while being Fred's secret portal */}
+      {/* Decorative Floral Trio */}
       <div className="relative mb-6 flex items-center justify-center gap-3 sm:gap-4 select-none">
         <TulipSvg className="w-10 h-10 sm:w-12 sm:h-12 transform -rotate-12 transition-transform hover:scale-110 pointer-events-none" color="#E11D48" />
 
-        {/* Innocent secret trigger for Fred */}
+        {/* Sunflower: Innocently gentle for Pumpkin; Triple-click or ?fred opens Fred's dashboard */}
         <button
           type="button"
-          onClick={() => setShowPasscodeModal(true)}
-          className="relative group p-0 bg-transparent border-none cursor-pointer focus:outline-none transition-transform active:scale-95"
+          onClick={handleSunflowerClick}
+          className={`relative group p-0 bg-transparent border-none cursor-pointer focus:outline-none transition-transform active:scale-95 ${
+            isFlowerWobbling ? 'scale-110 -rotate-6' : ''
+          }`}
           tabIndex={-1}
+          aria-label="Sunflower"
         >
           <SunflowerSvg className="w-16 h-16 sm:w-20 sm:h-20 drop-shadow-md" />
         </button>
@@ -208,10 +252,24 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
         </form>
       </div>
 
+      {/* Discreet Fred Dev Indicator - ONLY visible on Fred's dev site */}
+      {isFredSite && (
+        <div className="mt-5 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setShowPasscodeModal(true)}
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-800/70 hover:text-amber-900 bg-amber-100/50 hover:bg-amber-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer border border-amber-200/60"
+          >
+            <KeyRound className="w-3 h-3 text-amber-700" />
+            <span>Fred Dashboard Portal (Passcode)</span>
+          </button>
+        </div>
+      )}
+
       {/* ============================================================ */}
-      {/* FRED'S PASSCODE MODAL */}
+      {/* FRED'S PASSCODE MODAL - STRICTLY ONLY ON FRED'S SITE */}
       {/* ============================================================ */}
-      {showPasscodeModal && (
+      {isFredSite && showPasscodeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 border-2 border-amber-300 shadow-2xl text-center">
             <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-3 text-amber-700">
@@ -251,7 +309,7 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm"
+                  className="flex-1 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm cursor-pointer"
                 >
                   Unlock
                 </button>
@@ -292,7 +350,7 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
                 <button
                   onClick={handleClearResponses}
                   className="p-2 text-rose-700 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
-                  title="Clear responses"
+                  title="Clear all responses"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -321,11 +379,24 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
                     className="bg-white rounded-2xl p-5 border border-amber-200 shadow-sm space-y-3.5"
                   >
                     <div className="flex items-center justify-between text-xs text-stone-500 pb-2 border-b border-amber-100">
-                      <span className="font-bold text-amber-900">Response #{responsesList.length - idx}</span>
-                      <div className="flex items-center gap-1 font-mono text-[11px]">
-                        <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                        <span>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : 'Just now'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-amber-900">Response #{responsesList.length - idx}</span>
+                        <div className="flex items-center gap-1 font-mono text-[11px] text-stone-400">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : 'Just now'}</span>
+                        </div>
                       </div>
+
+                      {/* Delete individual response */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSingleResponse(entry.id)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer border border-rose-200/60"
+                        title="Delete this response"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-500" />
+                        <span>Delete</span>
+                      </button>
                     </div>
 
                     <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-100/80">
