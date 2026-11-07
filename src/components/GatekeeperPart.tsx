@@ -332,8 +332,11 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
                   <h3 className="text-lg sm:text-xl font-bold text-amber-950">
                     Fred&apos;s Responses Dashboard
                   </h3>
-                  <p className="text-xs text-amber-800">
-                    {responsesList.length} response{responsesList.length === 1 ? '' : 's'} recorded
+                  <p className="text-xs text-amber-800 flex items-center gap-1.5 mt-0.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{responsesList.length} response{responsesList.length === 1 ? '' : 's'} recorded</span>
+                    <span className="text-stone-400">•</span>
+                    <span className="text-[11px] text-emerald-800 font-semibold">Live Dual Cloud Sync</span>
                   </p>
                 </div>
               </div>
@@ -418,7 +421,7 @@ export const GatekeeperPart: React.FC<GatekeeperPartProps> = ({ onUnlock, isAudi
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-amber-900 flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5 text-amber-700" />
-                          <span>2. Academics:</span>
+                          <span>2. School-life balance:</span>
                         </span>
                         <span className="text-sm font-extrabold text-amber-800 font-mono">
                           {entry.academics} / 10

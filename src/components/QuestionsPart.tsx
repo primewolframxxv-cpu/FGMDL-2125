@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { CheckinAnswers } from '../types/index.ts';
-import { SunflowerSvg, TulipSvg, CarnationSvg } from './FloralBackground.tsx';
+import { SunflowerSvg, TulipSvg } from './FloralBackground.tsx';
 import { playSuccessChime } from '../utils/audio.ts';
 import { saveResponse } from '../utils/responsesStorage.ts';
-import { Heart, BookOpen, Gift, ArrowRight, Copy, CheckCircle2, Sparkles, MessageCircleHeart, AlertCircle } from 'lucide-react';
+import { Heart, BookOpen, Gift, ArrowRight, MessageCircleHeart, AlertCircle } from 'lucide-react';
 
 interface QuestionsPartProps {
   answers: CheckinAnswers;
@@ -19,8 +19,8 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
   isAudioMuted,
 }) => {
   const [formData, setFormData] = useState<CheckinAnswers>(answers);
-  const [copied, setCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [unfilledFields, setUnfilledFields] = useState<{
     moodNote: boolean;
     academicsNote: boolean;
@@ -76,6 +76,7 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
       return;
     }
 
+    setIsSaving(true);
     onUpdateAnswers(formData);
 
     const submissionEntry = {
@@ -84,34 +85,19 @@ export const QuestionsPart: React.FC<QuestionsPartProps> = ({
       ...formData,
     };
 
-    // Save across all layers (Cloud Vault + Server API + LocalStorage)
+    // Save across all layers (Primary Cloud + Backup Cloud + Server API + LocalStorage)
     try {
       await saveResponse(submissionEntry);
     } catch (err) {
       console.warn('Submission save error:', err);
+    } finally {
+      setIsSaving(false);
     }
 
     if (!isAudioMuted) {
       playSuccessChime();
     }
     onContinue();
-  };
-
-  const copySummaryToClipboard = () => {
-    const summary = `🌻 Pumpkin's Check-in Summary:
-1. How life's been treating me: ${formData.mood}/10
-${formData.moodNote ? `"${formData.moodNote}"` : ''}
-
-2. Academics: ${formData.academics}/10
-${formData.academicsNote ? `"${formData.academicsNote}"` : ''}
-
-3. Christmas excitement: ${formData.christmas}/10
-${formData.christmasNote ? `"${formData.christmasNote}"` : ''}
-Sent with warmth 💛`;
-
-    navigator.clipboard.writeText(summary);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
   };
 
   const getMoodDescriptor = (score: number) => {
@@ -342,31 +328,14 @@ Sent with warmth 💛`;
       )}
 
       {/* Action Footer */}
-      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-amber-100/70 p-4 sm:p-5 rounded-3xl border border-amber-200/80">
-        <button
-          type="button"
-          onClick={copySummaryToClipboard}
-          className="flex items-center gap-2 text-xs font-bold text-amber-900 bg-white hover:bg-amber-50 px-4 py-3 rounded-2xl border border-amber-300 shadow-xs transition-all cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Summary Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-4 h-4 text-amber-700" />
-              <span>Copy Answers or Chika</span>
-            </>
-          )}
-        </button>
-
+      <div className="mt-8 flex justify-end">
         <button
           type="button"
           onClick={handleFinish}
-          className="w-full sm:w-auto py-3.5 px-8 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-bold text-sm sm:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer"
+          disabled={isSaving}
+          className="w-full sm:w-auto py-3.5 px-8 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-bold text-sm sm:text-base rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-75"
         >
-          <span>Continue</span>
+          <span>{isSaving ? 'Saving...' : 'Continue'}</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
         </button>
       </div>

@@ -8,15 +8,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const CLOUD_VAULT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a19f92695916f5';
+const PRIMARY_VAULT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a19f92695916f5';
+const BACKUP_VAULT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1b6b44b485d69';
 
 app.use(express.json());
 
-// Enable CORS for all incoming requests (iOS Safari, Vercel, Incognito, etc.)
+// Enable CORS and anti-cache for all incoming requests (iOS Safari, Vercel, Incognito, etc.)
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, Pragma');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
@@ -60,21 +62,25 @@ app.get('/api/responses', async (req, res) => {
     if (item && item.id) map.set(item.id as string, item);
   }
 
-  // Also pull from Cloud Vault to merge cross-device submissions
-  try {
-    const cloudRes = await fetch(CLOUD_VAULT_URL);
-    if (cloudRes.ok) {
-      const json = await cloudRes.json();
-      const cloudList = json?.data?.responses;
-      if (Array.isArray(cloudList)) {
-        for (const item of cloudList) {
-          if (item && item.id && !map.has(item.id)) {
-            map.set(item.id, item);
+  const fetchVault = async (url: string) => {
+    try {
+      const cloudRes = await fetch(`${url}?_t=${Date.now()}`, { cache: 'no-store' });
+      if (cloudRes.ok) {
+        const json = await cloudRes.json();
+        const list = json?.data?.responses;
+        if (Array.isArray(list)) {
+          for (const item of list) {
+            if (item && item.id) map.set(item.id as string, item);
           }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  };
+
+  await Promise.allSettled([
+    fetchVault(PRIMARY_VAULT_URL),
+    fetchVault(BACKUP_VAULT_URL),
+  ]);
 
   const combined = Array.from(map.values());
   combined.sort((a, b) => {
@@ -83,7 +89,6 @@ app.get('/api/responses', async (req, res) => {
     return timeB - timeA;
   });
 
-  // Keep local file in sync
   writeLocalResponses(combined);
   res.json(combined);
 });
@@ -101,28 +106,34 @@ app.post('/api/responses', async (req, res) => {
   const updatedLocal = [newEntry, ...localList.filter((item) => item.id !== newEntry.id)];
   writeLocalResponses(updatedLocal);
 
-  // Sync to Cloud Vault
-  try {
-    const getRes = await fetch(CLOUD_VAULT_URL);
-    let cloudList: Record<string, unknown>[] = [];
-    if (getRes.ok) {
-      const data = await getRes.json();
-      if (Array.isArray(data?.data?.responses)) {
-        cloudList = data.data.responses;
+  const syncVault = async (url: string, vaultName: string) => {
+    try {
+      const getRes = await fetch(`${url}?_t=${Date.now()}`, { cache: 'no-store' });
+      let cloudList: Record<string, unknown>[] = [];
+      if (getRes.ok) {
+        const data = await getRes.json();
+        if (Array.isArray(data?.data?.responses)) {
+          cloudList = data.data.responses;
+        }
       }
+      const updatedCloud = [newEntry, ...cloudList.filter((item) => item.id !== newEntry.id)];
+      await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: vaultName,
+          data: { responses: updatedCloud },
+        }),
+      });
+    } catch (err) {
+      console.error(`Failed to sync to vault (${url}):`, err);
     }
-    const updatedCloud = [newEntry, ...cloudList.filter((item) => item.id !== newEntry.id)];
-    await fetch(CLOUD_VAULT_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'fred_pumpkin_responses_vault',
-        data: { responses: updatedCloud },
-      }),
-    });
-  } catch (err) {
-    console.error('Failed to sync to cloud vault:', err);
-  }
+  };
+
+  await Promise.allSettled([
+    syncVault(PRIMARY_VAULT_URL, 'fred_pumpkin_responses_vault'),
+    syncVault(BACKUP_VAULT_URL, 'fred_pumpkin_responses_vault_backup'),
+  ]);
 
   res.json({ success: true, count: updatedLocal.length, entry: newEntry });
 });
@@ -136,37 +147,53 @@ app.delete('/api/responses', async (req, res) => {
     const filtered = localList.filter((item) => item.id !== targetId);
     writeLocalResponses(filtered);
 
-    try {
-      const getRes = await fetch(CLOUD_VAULT_URL);
-      if (getRes.ok) {
-        const data = await getRes.json();
-        if (Array.isArray(data?.data?.responses)) {
-          const cloudFiltered = data.data.responses.filter((item: { id?: string }) => item.id !== targetId);
-          await fetch(CLOUD_VAULT_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: 'fred_pumpkin_responses_vault',
-              data: { responses: cloudFiltered },
-            }),
-          });
+    const deleteVault = async (url: string, vaultName: string) => {
+      try {
+        const getRes = await fetch(`${url}?_t=${Date.now()}`, { cache: 'no-store' });
+        if (getRes.ok) {
+          const data = await getRes.json();
+          if (Array.isArray(data?.data?.responses)) {
+            const cloudFiltered = data.data.responses.filter((item: { id?: string }) => item.id !== targetId);
+            await fetch(url, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: vaultName,
+                data: { responses: cloudFiltered },
+              }),
+            });
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    };
+
+    await Promise.allSettled([
+      deleteVault(PRIMARY_VAULT_URL, 'fred_pumpkin_responses_vault'),
+      deleteVault(BACKUP_VAULT_URL, 'fred_pumpkin_responses_vault_backup'),
+    ]);
 
     res.json({ success: true, deletedId: targetId, count: filtered.length });
   } else {
     writeLocalResponses([]);
-    try {
-      await fetch(CLOUD_VAULT_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'fred_pumpkin_responses_vault',
-          data: { responses: [] },
-        }),
-      });
-    } catch {}
+
+    const clearVault = async (url: string, vaultName: string) => {
+      try {
+        await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: vaultName,
+            data: { responses: [] },
+          }),
+        });
+      } catch {}
+    };
+
+    await Promise.allSettled([
+      clearVault(PRIMARY_VAULT_URL, 'fred_pumpkin_responses_vault'),
+      clearVault(BACKUP_VAULT_URL, 'fred_pumpkin_responses_vault_backup'),
+    ]);
+
     res.json({ success: true, count: 0 });
   }
 });
