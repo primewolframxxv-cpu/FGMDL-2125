@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Trophy,
   Heart,
-  Copy,
 } from 'lucide-react';
 
 interface Piece {
@@ -34,7 +33,6 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isSolved, setIsSolved] = useState<boolean>(false);
-  const [copiedLetter, setCopiedLetter] = useState<boolean>(false);
   const [movesCount, setMovesCount] = useState<number>(0);
 
   // Clue state with 1-minute countdown
@@ -191,12 +189,6 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
     setTimeout(() => {
       setActiveClue((prev) => (prev && prev.currentSlot === chosen.currentIndex ? null : prev));
     }, 8000);
-  };
-
-  const handleCopyLetter = () => {
-    navigator.clipboard.writeText(customMessage);
-    setCopiedLetter(true);
-    setTimeout(() => setCopiedLetter(false), 2500);
   };
 
   const sortedDisplayPieces = Array.from({ length: totalPieces }, (_, gridPos) => {
@@ -386,27 +378,11 @@ export const PuzzlePart: React.FC<PuzzlePartProps> = ({
         {isSolved && (
           <div className="mt-8 pt-6 border-t border-amber-200/80 animate-paper-in">
             <div className="bg-gradient-to-br from-[#FFFDF8] via-white to-amber-50/70 rounded-3xl p-6 sm:p-10 border-2 border-amber-300 shadow-xl">
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-amber-200/80">
-                <div className="flex items-center gap-2.5">
-                  <Heart className="w-6 h-6 text-rose-500 fill-rose-500" />
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-amber-950 tracking-tight">
-                    Message from Fred
-                  </h3>
-                </div>
-
-                <button
-                  onClick={handleCopyLetter}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white hover:bg-amber-50 text-stone-700 rounded-xl border border-amber-200 shadow-xs cursor-pointer"
-                >
-                  {copiedLetter ? (
-                    <span className="text-emerald-700 font-extrabold">Copied!</span>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-stone-600" />
-                      <span>Copy Letter</span>
-                    </>
-                  )}
-                </button>
+              <div className="flex items-center gap-2.5 mb-5 pb-3 border-b border-amber-200/80">
+                <Heart className="w-6 h-6 text-rose-500 fill-rose-500" />
+                <h3 className="text-xl sm:text-2xl font-extrabold text-amber-950 tracking-tight">
+                  Message from Fred
+                </h3>
               </div>
 
               {/* Bolder, refined, heartwarming typography */}
