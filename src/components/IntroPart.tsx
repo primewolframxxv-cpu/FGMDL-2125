@@ -36,7 +36,7 @@ export const IntroPart: React.FC<IntroPartProps> = ({ onContinue }) => {
           </p>
 
           <p>
-            We haven&apos;t been able to catch up or talk in a long time, so I created this to check in on you. I don&apos;t mean to interrupt, but I would really appreciate a moment of your time. I hope you had a wonderful day, too.
+            We haven&apos;t been able to catch up or talk in a while, so I created this to check in on you. I don&apos;t mean to interrupt, but I would really appreciate a moment of your time. I hope you had a wonderful day, too.
           </p>
         </div>
 
