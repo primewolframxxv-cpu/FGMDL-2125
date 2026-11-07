@@ -17,6 +17,7 @@ export type CookieMotif =
   | 'watermelon'
   | 'pink_bow'
   | 'syringe'
+  | 'green_heart'
   | 'tulip'
   | 'sunflower'
   | 'carnation'

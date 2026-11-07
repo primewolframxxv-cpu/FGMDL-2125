@@ -161,7 +161,7 @@ Sent with warmth 💛`;
             <div>
               <span className="text-xs font-bold text-amber-800 tracking-wide uppercase">Question 1</span>
               <h3 className="text-lg sm:text-xl font-bold text-amber-950">
-                On a scale of 1–10, how&apos;s life been treating you so far?
+                On a scale of 1-10, how has life been treating you overall lately?
               </h3>
             </div>
           </div>
@@ -195,7 +195,7 @@ Sent with warmth 💛`;
           <div className="mt-4">
             <label className="block text-xs font-bold text-amber-950 mb-1.5 flex items-center gap-1.5">
               <MessageCircleHeart className="w-3.5 h-3.5 text-rose-500" />
-              <span>Add a comment / chika about how life has been treating you lately:</span>
+              <span>Add a comment or chika about how life has been treating you lately:</span>
             </label>
             <textarea
               id="comment-mood"
@@ -221,7 +221,7 @@ Sent with warmth 💛`;
             <div>
               <span className="text-xs font-bold text-amber-800 tracking-wide uppercase">Question 2</span>
               <h3 className="text-lg sm:text-xl font-bold text-amber-950">
-                On a scale of 1–10, how have you been doing in terms of academics?
+                On a scale of 1-10, how&apos;s the school-life balance going?
               </h3>
             </div>
           </div>
@@ -255,7 +255,7 @@ Sent with warmth 💛`;
           <div className="mt-4">
             <label className="block text-xs font-bold text-amber-950 mb-1.5 flex items-center gap-1.5">
               <MessageCircleHeart className="w-3.5 h-3.5 text-amber-600" />
-              <span>Add a comment / chika about your studies, exams, or clinicals:</span>
+              <span>Add a comment or chika about your studies, exams, or clinicals:</span>
             </label>
             <textarea
               id="comment-academics"
@@ -281,7 +281,7 @@ Sent with warmth 💛`;
             <div>
               <span className="text-xs font-bold text-amber-800 tracking-wide uppercase">Question 3</span>
               <h3 className="text-lg sm:text-xl font-bold text-amber-950">
-                On a scale of 1–10, how much do you think are you excited for Christmas season?
+                On a scale of 1-10, how much do you think you&apos;re excited for Christmas season?
               </h3>
             </div>
           </div>
@@ -315,7 +315,7 @@ Sent with warmth 💛`;
           <div className="mt-4">
             <label className="block text-xs font-bold text-amber-950 mb-1.5 flex items-center gap-1.5">
               <MessageCircleHeart className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Add a comment / chika about your Christmas mood or holiday plans:</span>
+              <span>Add a comment or chika about your Christmas mood or holiday plans:</span>
             </label>
             <textarea
               id="comment-christmas"
@@ -356,7 +356,7 @@ Sent with warmth 💛`;
           ) : (
             <>
               <Copy className="w-4 h-4 text-amber-700" />
-              <span>Copy Answers / Chika</span>
+              <span>Copy Answers or Chika</span>
             </>
           )}
         </button>

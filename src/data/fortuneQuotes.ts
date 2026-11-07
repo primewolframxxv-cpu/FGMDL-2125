@@ -27,7 +27,7 @@ export const INITIAL_FORTUNE_COOKIES: FortuneCookie[] = [
   },
   {
     id: 'cookie-syringe',
-    motif: 'syringe',
+    motif: 'green_heart',
     label: '',
     quote: 'The care and dedication you put into learning and helping others is heroic. Be as gentle with yourself as you are with the world.',
     source: 'Encouragement for Pumpkin',
@@ -84,9 +84,9 @@ export const INITIAL_FORTUNE_COOKIES: FortuneCookie[] = [
 ];
 
 export const INITIAL_SONG_DETAILS: SongDetails = {
-  title: "In My Arms Where I'll Keep You",
+  title: "In My Arms Is Where I'll Keep You",
   artist: 'December Avenue',
-  note: 'I listened to this song on the radio randomly during an afternoon drive, and had a thought of you. It is a meaningful song I would want to recommend to you :)',
+  note: 'I had listened to this song on a random afternoon while I was browsing different music genres, and had a thought of you. It is a meaningful song I would want to recommend to you',
   lyricsSnippet: '',
   streamingUrl:
     'https://open.spotify.com/playlist/6Aj8eYDWqfAF10hSw1WJcw?si=Mmu6hsicSXm6C8HeKKfttA&utm_source=copy-link&pi=BDJGXOgiQ4i64',

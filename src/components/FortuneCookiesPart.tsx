@@ -79,17 +79,20 @@ export const MotifDrawing = ({ motif, className = "w-6 h-6" }: { motif: CookieMo
           <circle cx="20" cy="20" r="3.5" fill="#DB2777" />
         </svg>
       );
+    case 'green_heart':
     case 'syringe':
       return (
-        <svg viewBox="0 0 40 40" className={className} fill="none" aria-label="Caring Syringe">
-          <g transform="rotate(45 20 20)">
-            <line x1="20" y1="4" x2="20" y2="10" stroke="#94A3B8" strokeWidth="1.8" strokeLinecap="round" />
-            <rect x="16" y="10" width="8" height="18" rx="1.5" fill="#E0F2FE" stroke="#0284C7" strokeWidth="1.5" />
-            <rect x="17" y="15" width="6" height="12" fill="#FDA4AF" />
-            <line x1="20" y1="28" x2="20" y2="35" stroke="#0284C7" strokeWidth="2.5" />
-            <line x1="14" y1="35" x2="26" y2="35" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" />
-            <circle cx="20" cy="20" r="1.5" fill="#E11D48" />
-          </g>
+        <svg viewBox="0 0 40 40" className={className} fill="none" aria-label="Green Heart">
+          <path
+            d="M20 33 C18 31 7 22.5 5 15.5 C3 8.5 9 4 14.5 5 C17.5 5.5 19.2 8 20 9.5 C20.8 8 22.5 5.5 25.5 5 C31 4 37 8.5 35 15.5 C33 22.5 22 31 20 33 Z"
+            fill="#22C55E"
+          />
+          <path
+            d="M13.5 8.5 C10.5 9.5 7.5 12 8 16"
+            stroke="#DCFCE7"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case 'tulip':
@@ -181,6 +184,7 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
   // 11th cookie states
   const [isEleventhFocused, setIsEleventhFocused] = useState(false);
   const [isEleventhCracked, setIsEleventhCracked] = useState(false);
+  const [isEleventhCracking, setIsEleventhCracking] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('pumpkin_cracked_cookies', JSON.stringify(Array.from(crackedIds)));
@@ -204,21 +208,29 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
   };
 
   const handleCrackEleventh = () => {
-    if (isEleventhCracked) return;
-    setIsEleventhCracked(true);
+    if (isEleventhCracked || isEleventhCracking) return;
+    setIsEleventhCracking(true);
+    if (!isAudioMuted) {
+      playCookieCrunch();
+    }
 
     try {
       confetti({
-        particleCount: 100,
+        particleCount: 110,
         spread: 90,
         origin: { y: 0.5 },
-        colors: ['#F59E0B', '#F43F5E', '#FB7185', '#FBBF24', '#EC4899'],
+        colors: ['#F59E0B', '#F43F5E', '#FB7185', '#FBBF24', '#EC4899', '#10B981'],
       });
     } catch {}
+
+    setTimeout(() => {
+      setIsEleventhCracked(true);
+      setIsEleventhCracking(false);
+    }, 380);
   };
 
   return (
-    <div className="relative z-10 max-w-5xl mx-auto px-4 py-8 sm:py-12 font-times animate-slide-in">
+    <div className="relative z-10 max-w-5xl mx-auto px-4 py-8 sm:py-12 animate-slide-in">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center gap-2 mb-2 font-sans">
@@ -270,12 +282,12 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                     <RealisticCookieGraphic motif={cookie.motif} />
                   </div>
                 ) : (
-                  <div className="w-full bg-[#FFFDF5] rounded-xl p-3 border border-amber-300 shadow-inner animate-paper-in flex flex-col justify-between">
-                    <p className="text-sm text-stone-900 leading-relaxed italic my-1 font-serif">
+                  <div className="w-full bg-gradient-to-b from-[#FFFDF8] to-[#FFF9EE] rounded-xl p-3.5 border border-amber-300/80 shadow-[inset_0_1px_4px_rgba(245,158,11,0.08)] animate-paper-in flex flex-col justify-between min-h-[125px]">
+                    <p className="text-[13px] sm:text-[13.5px] text-amber-950 font-medium leading-relaxed tracking-tight select-text my-0.5">
                       &ldquo;{cookie.quote}&rdquo;
                     </p>
                     {cookie.source && (
-                      <p className="text-xs text-amber-800 text-right mt-1.5 font-semibold">
+                      <p className="text-[11px] text-amber-800/90 text-right mt-2 font-bold tracking-wide">
                         — {cookie.source}
                       </p>
                     )}
@@ -314,20 +326,18 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
               <div className="relative w-full max-w-lg bg-[#FFFDF7] rounded-3xl p-6 sm:p-10 border-2 border-amber-300 shadow-2xl text-center">
                 {!isEleventhCracked ? (
-                  <div className="flex flex-col items-center py-4">
+                  <div className="flex flex-col items-center py-6">
                     <div
                       onClick={handleCrackEleventh}
-                      className="cursor-pointer group transform hover:scale-110 transition-transform py-3"
+                      className={`cursor-pointer group py-3 transition-transform ${
+                        isEleventhCracking ? 'scale-110 rotate-3' : 'hover:scale-110 active:scale-95'
+                      }`}
                     >
                       <RealisticCookieGraphic motif="song" />
                     </div>
-
-                    <button
-                      onClick={handleCrackEleventh}
-                      className="mt-6 py-3 px-8 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold text-sm rounded-2xl shadow-lg cursor-pointer font-sans"
-                    >
-                      Crack Cookie
-                    </button>
+                    <p className="text-xs font-semibold text-amber-800/80 mt-3 font-sans tracking-wide">
+                      Tap cookie to crack open
+                    </p>
                   </div>
                 ) : (
                   <div className="text-left animate-paper-in py-2">
@@ -353,7 +363,7 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                       rel="noopener noreferrer"
                       className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 mb-4 font-sans cursor-pointer"
                     >
-                      <span>-- Listen to it on our playlist --</span>
+                      <span>Listen to it on our playlist</span>
                       <ExternalLink className="w-4 h-4" />
                     </a>
 
