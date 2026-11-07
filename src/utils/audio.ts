@@ -16,66 +16,65 @@ function getAudioContext(): AudioContext {
 
 /**
  * Realistic crisp cracking sound of a fortune cookie snapping in half
+ * Natural acoustic dry wafer fracture without cartoon synth pitch sweeps
  */
 export function playCookieCrunch(): void {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
+    const sampleRate = ctx.sampleRate;
 
-    // 1. Initial sharp snap transient
-    const snapOsc = ctx.createOscillator();
-    const snapGain = ctx.createGain();
-    snapOsc.type = 'sawtooth';
-    snapOsc.frequency.setValueAtTime(2600, now);
-    snapOsc.frequency.exponentialRampToValueAtTime(340, now + 0.04);
+    // Instantaneous brittle fracture noise burst (very brief, ~50ms total)
+    const duration = 0.052;
+    const bufferSize = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
 
-    snapGain.gain.setValueAtTime(0.4, now);
-    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-
-    snapOsc.connect(snapGain);
-    snapGain.connect(ctx.destination);
-    snapOsc.start(now);
-    snapOsc.stop(now + 0.06);
-
-    // 2. Multi-grain crumb texture noise
-    const bufferSize = Math.floor(ctx.sampleRate * 0.12);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-      output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.03));
+      const t = i / sampleRate;
+      // Primary snap impulse followed by immediate crumb fracture at 11ms
+      const snap1 = Math.exp(-t / 0.006);
+      const snap2 = t > 0.011 ? Math.exp(-(t - 0.011) / 0.008) * 0.65 : 0;
+      data[i] = (Math.random() * 2 - 1) * (snap1 + snap2);
     }
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = buffer;
 
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(2000, now);
-    filter.Q.setValueAtTime(2.2, now);
+    // Bandpass captures the brittle acoustic resonance of dry baked pastry
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2600, now);
+    bandpass.Q.setValueAtTime(1.1, now);
 
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.35, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    // Highpass removes muddy sub-frequencies, keeping the snap crisp and dry
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.setValueAtTime(1100, now);
 
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(now + 0.005);
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0.38, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    // 3. Hollow cookie body resonance
-    const hollowOsc = ctx.createOscillator();
-    const hollowGain = ctx.createGain();
-    hollowOsc.type = 'triangle';
-    hollowOsc.frequency.setValueAtTime(420, now);
-    hollowOsc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+    noiseSource.connect(bandpass);
+    bandpass.connect(highpass);
+    highpass.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    noiseSource.start(now);
 
-    hollowGain.gain.setValueAtTime(0.3, now);
-    hollowGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    // Subtle low mechanical "thud" of hollow dry shell snapping (fixed frequency, no sweeping synth)
+    const thudOsc = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(185, now);
 
-    hollowOsc.connect(hollowGain);
-    hollowGain.connect(ctx.destination);
-    hollowOsc.start(now);
-    hollowOsc.stop(now + 0.1);
+    thudGain.gain.setValueAtTime(0.16, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(ctx.destination);
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.026);
   } catch {
     // Ignore audio errors silently
   }

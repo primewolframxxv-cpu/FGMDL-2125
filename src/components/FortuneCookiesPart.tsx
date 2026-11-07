@@ -114,7 +114,7 @@ export const MotifDrawing = ({ motif, className = "w-6 h-6" }: { motif: CookieMo
   }
 };
 
-const RealisticCookieGraphic = ({ motif }: { motif: CookieMotif }) => (
+const RealisticCookieGraphic = () => (
   <div className="relative w-28 h-22 flex items-center justify-center">
     <svg viewBox="0 0 120 95" className="w-full h-full drop-shadow-md">
       <defs>
@@ -154,10 +154,6 @@ const RealisticCookieGraphic = ({ motif }: { motif: CookieMotif }) => (
         fill="none"
       />
     </svg>
-
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[62%] pointer-events-none drop-shadow-xs">
-      <MotifDrawing motif={motif} className="w-7 h-7" />
-    </div>
   </div>
 );
 
@@ -279,7 +275,7 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                       isAnimating ? 'scale-110 rotate-3' : 'hover:scale-105'
                     }`}
                   >
-                    <RealisticCookieGraphic motif={cookie.motif} />
+                    <RealisticCookieGraphic />
                   </div>
                 ) : (
                   <div className="w-full bg-gradient-to-b from-[#FFFDF8] to-[#FFF9EE] rounded-xl p-3.5 border border-amber-300/80 shadow-[inset_0_1px_4px_rgba(245,158,11,0.08)] animate-paper-in flex flex-col justify-between min-h-[125px]">
@@ -293,12 +289,6 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Card Footer */}
-              <div className="mt-2 pt-2 border-t border-amber-100 flex items-center justify-between text-[11px] text-stone-500 font-sans">
-                <span>{isCracked ? 'Opened' : 'Click to crack'}</span>
-                {isCracked && <span className="text-emerald-700 font-bold">✓</span>}
               </div>
             </div>
           );
@@ -318,7 +308,7 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
               >
                 <div className="relative">
                   <div className="absolute inset-0 bg-amber-400/50 rounded-full blur-2xl group-hover:bg-amber-400/80 transition-all" />
-                  <RealisticCookieGraphic motif="song" />
+                  <RealisticCookieGraphic />
                 </div>
               </div>
             </div>
@@ -333,11 +323,8 @@ export const FortuneCookiesPart: React.FC<FortuneCookiesPartProps> = ({
                         isEleventhCracking ? 'scale-110 rotate-3' : 'hover:scale-110 active:scale-95'
                       }`}
                     >
-                      <RealisticCookieGraphic motif="song" />
+                      <RealisticCookieGraphic />
                     </div>
-                    <p className="text-xs font-semibold text-amber-800/80 mt-3 font-sans tracking-wide">
-                      Tap cookie to crack open
-                    </p>
                   </div>
                 ) : (
                   <div className="text-left animate-paper-in py-2">
